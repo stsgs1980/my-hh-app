@@ -113,9 +113,77 @@ Stage Summary:
 - Remote push blocked pending PAT from user
 - Commit includes: eslint-rules/*, eslint.config.mjs, .husky/pre-commit, package.json updates, ANTI-MONOLITH comments on shadcn/ui
 
+Stage Summary:
+- Squashed 5 auto-commits into 1 clean commit: 0145012
+- Added .gitignore entries: upload/, tool-results/, .zscripts/, db/
+- Committed gitignore update: b2e1b13
+- Fixed 3 pre-commit warnings: ANTI-MONOLITH exception on no-unicode-policy.js, named export in eslint.config.mjs, --no-warn-ignored in lint-staged
+- Fixed accidental force push to HH-Copilot repo: restored original main (547fce1a) via GitHub API
+- Pushed to new repo: stsgs1980/my-hh-app
+- Final lint: 0 errors, 0 warnings
+
+---
+## Project Vision (Session 2 Discussion)
+
+### What We Are Building
+**HH App** -- new Chrome Extension for hh.ru (Magritte design system) with AI-powered features.
+
+Core features (priority order):
+1. **Scoring/Matching** -- evaluate resume vs vacancy fit (THE critical feature)
+2. **Cover letter generation** -- LLM-powered, based on parsed resume + vacancy data
+3. **Chat assistance** -- help in conversations with employers (scoring messages, suggestions)
+
+### Architecture Decision
+- **Pure Chrome Extension** (no backend/server)
+- Extension calls LLM API directly from background script (API key in extension, private project)
+- All data stored locally (chrome.storage.local)
+- DOM parsing only (hh.ru Applicant API closed in Dec 2025)
+
+### Project Structure
+```
+my-hh-app/
+  extension/           # Chrome Extension (Manifest V3, esbuild)
+    manifest.json
+    src/               # content scripts, background, parsers, scoring
+    dist/              # built bundle
+  src/                 # Next.js landing page (static export, no server)
+    app/page.tsx
+  eslint-rules/        # shared ESLint rules (DONE)
+  eslint.config.mjs    # shared ESLint config (DONE)
+```
+
+### Reusable from Old HH-Copilot (/tmp/HH-Copilot/)
+Already proven to work against Magritte DOM:
+- **Vacancy parsing**: search page + Vacancy of the Day, word-match selectors, fallback strategies
+- **Resume parsing**: 13 fields, 14 files, 6 fallback strategies per field, diagnoseResumeDOM()
+- **Anti-hallucination guard**: 3-level verification (DOM -> Data -> Action)
+- **Rate limiter**: token bucket with adaptive slowdown
+- **Shadow DOM sidebar**: isolated UI panel, FAB button, auth detection
+- **SPA navigation**: MutationObserver with debounce for hh.ru React SPA
+- **ESLint AHG rules**: already integrated (max-file-lines, ahg-unicode-graphics)
+- **Negotiations parser**: vacancy ID, status, date from /applicant/negotiations
+
+### What is NEW (not in old HH-Copilot)
+- **Scoring engine**: normalize parsed data -> calculate match score (resume vs vacancy)
+  - Skill matching (canonical forms, synonyms, proficiency levels)
+  - Experience matching (years, relevance)
+  - Salary matching (range overlap)
+  - Location matching
+  - This is the hardest part -- needs correct normalization of unstructured DOM data
+- **Chat assistance**: analyze employer messages, suggest responses
+- **Cover letter**: LLM generation (old HH-Copilot had this too, can reuse prompt patterns)
+
+### Key Challenge
+DOM parsing produces unstructured/noisy data. Scoring without proper normalization is garbage.
+Plan: parse (reuse HH-Copilot) -> normalize -> score.
+Tomorrow: review old HH-Copilot parsers in /tmp/HH-Copilot/extension/src/parsers/ to verify logic, then port/adapt.
+
+### Remote Repos
+- stsgs1980/my-hh-app -- THIS project (Next.js + future extension)
+- stsgs1980/HH-Copilot -- OLD project (reference only, restored after accidental force push)
+
 ### Unresolved / Next Phase
-- PAT not received -- remote push pending
-- lint-md.js script not yet created (STD-DOC-002 section 10.7 prescribes it for full .md validation outside code blocks)
-- no-emoji-in-md / no-unicode-graphics-in-md rules may not fire through eslint-plugin-markdown processor (known limitation)
-- 2 non-blocking warnings: no-unicode-policy.js 234 lines (AHG Rule 12), import/no-anonymous-default-export (next base config)
-- No application code written yet -- project is scaffold-only with linting infrastructure
+- lint-md.js script not yet created (STD-DOC-002 section 10.7)
+- no-emoji-in-md / no-unicode-graphics-in-md known limitation via eslint-plugin-markdown
+- No application code written yet -- project is scaffold + ESLint infrastructure only
+- Tomorrow: review HH-Copilot parsers, design scoring system, start extension/ structure
